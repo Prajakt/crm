@@ -26,12 +26,16 @@ class CRMFieldsLayout(Document):
 
 
 @frappe.whitelist()
-def get_fields_layout(doctype: str, type: str, parent_doctype: str | None = None):
+def get_fields_layout(doctype: str, type: str, parent_doctype: str | None = None, project: str | None = None):
 	tabs = []
 	layout = None
 
-	if frappe.db.exists("CRM Fields Layout", {"dt": doctype, "type": type}):
-		layout = frappe.get_doc("CRM Fields Layout", {"dt": doctype, "type": type})
+	# Try to get project-specific layout first, then fall back to global layout
+	if project and frappe.db.exists("CRM Fields Layout", {"dt": doctype, "type": type, "project": project}):
+		layout = frappe.get_doc("CRM Fields Layout", {"dt": doctype, "type": type, "project": project})
+	elif frappe.db.exists("CRM Fields Layout", {"dt": doctype, "type": type, "project": ["in", [None, ""]]}):
+		# Get global layout (no project specified)
+		layout = frappe.get_doc("CRM Fields Layout", {"dt": doctype, "type": type, "project": ["in", [None, ""]]})
 
 	if layout and layout.layout:
 		tabs = json.loads(layout.layout)
@@ -225,9 +229,15 @@ def get_field_obj(field):
 
 
 @frappe.whitelist()
-def save_fields_layout(doctype: str, type: str, layout: str):
-	if frappe.db.exists("CRM Fields Layout", {"dt": doctype, "type": type}):
-		doc = frappe.get_doc("CRM Fields Layout", {"dt": doctype, "type": type})
+def save_fields_layout(doctype: str, type: str, layout: str, project: str | None = None):
+	filters = {"dt": doctype, "type": type}
+	if project:
+		filters["project"] = project
+	else:
+		filters["project"] = ["in", [None, ""]]
+
+	if frappe.db.exists("CRM Fields Layout", filters):
+		doc = frappe.get_doc("CRM Fields Layout", filters)
 	else:
 		doc = frappe.new_doc("CRM Fields Layout")
 
@@ -236,6 +246,7 @@ def save_fields_layout(doctype: str, type: str, layout: str):
 			"dt": doctype,
 			"type": type,
 			"layout": layout,
+			"project": project,
 		}
 	)
 	doc.save(ignore_permissions=True)

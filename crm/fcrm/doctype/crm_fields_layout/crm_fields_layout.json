@@ -9,6 +9,7 @@
   "dt",
   "column_break_post",
   "type",
+  "project",
   "section_break_ttpm",
   "layout"
  ],
@@ -28,6 +29,15 @@
    "in_standard_filter": 1,
    "label": "Type",
    "options": "Quick Entry\nSide Panel\nData Fields\nGrid Row\nRequired Fields"
+  },
+  {
+   "description": "If set, this layout applies only to the specified project. Leave empty for global layout.",
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "CRM Project"
   },
   {
    "fieldname": "section_break_ttpm",
