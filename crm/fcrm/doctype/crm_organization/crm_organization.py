@@ -29,7 +29,20 @@ class CRMOrganization(Document):
 	# end: auto-generated types
 
 	def validate(self):
+		self.auto_assign_project()
 		self.update_exchange_rate()
+
+	def auto_assign_project(self):
+		"""Auto-assign current user's active project if not set"""
+		if not self.project and frappe.db.exists("DocType", "CRM Project"):
+			try:
+				from crm.fcrm.doctype.crm_project.crm_project import get_active_project
+				active_project = get_active_project(frappe.session.user)
+				if active_project:
+					self.project = active_project
+			except Exception:
+				# Silently fail if project module not available
+				pass
 
 	def update_exchange_rate(self):
 		if self.has_value_changed("currency") or not self.exchange_rate:

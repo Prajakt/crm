@@ -1,6 +1,7 @@
 # Copyright (c) 2023, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import frappe
 from frappe.desk.form.assign_to import add as assign
 from frappe.desk.form.assign_to import remove as unassign
 from frappe.model.document import Document
@@ -31,12 +32,25 @@ class CRMTask(Document):
 		self.assign_to()
 
 	def validate(self):
+		self.auto_assign_project()
 		if self.is_new() or not self.assigned_to:
 			return
 
 		if self.get_doc_before_save().assigned_to != self.assigned_to:
 			self.unassign_from_previous_user(self.get_doc_before_save().assigned_to)
 			self.assign_to()
+
+	def auto_assign_project(self):
+		"""Auto-assign current user's active project if not set"""
+		if not self.project and frappe.db.exists("DocType", "CRM Project"):
+			try:
+				from crm.fcrm.doctype.crm_project.crm_project import get_active_project
+				active_project = get_active_project(frappe.session.user)
+				if active_project:
+					self.project = active_project
+			except Exception:
+				# Silently fail if project module not available
+				pass
 
 	def unassign_from_previous_user(self, user: str | None):
 		if user:

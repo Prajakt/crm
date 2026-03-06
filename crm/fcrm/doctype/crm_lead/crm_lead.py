@@ -78,6 +78,7 @@ class CRMLead(Document):
 		self.set_lead_name()
 		self.set_title()
 		self.validate_email()
+		self.auto_assign_project()
 		if not self.is_new() and self.has_value_changed("lead_owner") and self.lead_owner:
 			self.share_with_agent(self.lead_owner)
 			self.assign_agent(self.lead_owner)
@@ -129,6 +130,18 @@ class CRMLead(Document):
 
 			if self.is_new() or not self.image:
 				self.image = has_gravatar(self.email)
+
+	def auto_assign_project(self):
+		"""Auto-assign current user's active project if not set"""
+		if not self.project and frappe.db.exists("DocType", "CRM Project"):
+			try:
+				from crm.fcrm.doctype.crm_project.crm_project import get_active_project
+				active_project = get_active_project(frappe.session.user)
+				if active_project:
+					self.project = active_project
+			except Exception:
+				# Silently fail if project module not available
+				pass
 
 	def assign_agent(self, agent):
 		if not agent:

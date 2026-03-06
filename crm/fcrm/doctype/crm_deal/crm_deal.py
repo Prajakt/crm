@@ -82,6 +82,7 @@ class CRMDeal(Document):
 	def validate(self):
 		self.set_primary_contact()
 		self.set_primary_email_mobile_no()
+		self.auto_assign_project()
 		if not self.is_new() and self.has_value_changed("deal_owner") and self.deal_owner:
 			self.share_with_agent(self.deal_owner)
 			self.assign_agent(self.deal_owner)
@@ -136,6 +137,18 @@ class CRMDeal(Document):
 			self.email = ""
 			self.mobile_no = ""
 			self.phone = ""
+
+	def auto_assign_project(self):
+		"""Auto-assign current user's active project if not set"""
+		if not self.project and frappe.db.exists("DocType", "CRM Project"):
+			try:
+				from crm.fcrm.doctype.crm_project.crm_project import get_active_project
+				active_project = get_active_project(frappe.session.user)
+				if active_project:
+					self.project = active_project
+			except Exception:
+				# Silently fail if project module not available
+				pass
 
 	def assign_agent(self, agent):
 		if not agent:
