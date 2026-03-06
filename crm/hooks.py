@@ -122,13 +122,17 @@ before_uninstall = "crm.uninstall.before_uninstall"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# "Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# "Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+permission_query_conditions = {
+	"CRM Lead": "crm.permissions.get_project_permission_query_conditions",
+	"CRM Deal": "crm.permissions.get_project_permission_query_conditions",
+	"CRM Task": "crm.permissions.get_project_permission_query_conditions",
+}
+
+has_permission = {
+	"CRM Lead": "crm.permissions.has_project_permission",
+	"CRM Deal": "crm.permissions.has_project_permission",
+	"CRM Task": "crm.permissions.has_project_permission",
+}
 
 # DocType Class
 # ---------------

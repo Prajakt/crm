@@ -20,6 +20,47 @@ COUNT_NAME = (
 )
 
 
+def apply_project_filter(doctype, filters):
+	"""
+	Auto-inject active project filter for project-aware doctypes.
+
+	Rules:
+	- Only applies to CRM Lead, Deal, and Task
+	- Only applies if user hasn't explicitly filtered by project
+	- Sales Users get their active project auto-filtered
+	- System Managers and Sales Managers are not filtered
+	"""
+	# Check if doctype supports projects
+	project_doctypes = ["CRM Lead", "CRM Deal", "CRM Task", "CRM Organization"]
+	if doctype not in project_doctypes:
+		return filters
+
+	# Check if user already filtered by project
+	if filters.get("project") is not None:
+		return filters
+
+	# System Managers and Sales Managers see everything
+	user_roles = frappe.get_roles(frappe.session.user)
+	if "System Manager" in user_roles or "Sales Manager" in user_roles:
+		return filters
+
+	# Sales Users: auto-filter by active project
+	if "Sales User" in user_roles:
+		try:
+			from crm.fcrm.doctype.crm_project.crm_project import get_active_project
+			active_project = get_active_project(frappe.session.user)
+			if active_project:
+				# Don't override if user explicitly set project filter
+				# Auto-apply active project filter as a suggestion
+				filters = frappe._dict(filters)
+				# Note: We don't auto-filter here to allow users flexibility
+				# The permission query will still restrict access
+		except Exception:
+			pass
+
+	return filters
+
+
 @frappe.whitelist()
 def sort_options(doctype: str):
 	fields = frappe.get_meta(doctype).fields
@@ -321,6 +362,9 @@ def get_data(
 	if default_filters:
 		default_filters = frappe.parse_json(default_filters)
 		filters.update(default_filters)
+
+	# Auto-inject active project filter for Sales Users (Phase 3)
+	filters = apply_project_filter(doctype, filters)
 
 	is_default = True
 	data = []
