@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import _
+from frappe.utils import add_months, nowdate
 
 
 @frappe.whitelist()
@@ -437,9 +438,17 @@ def get_project_reports(project):
 	""", project, as_dict=True)
 
 	# Monthly trend (last 6 months)
-	monthly_trend = frappe.db.sql("""
+	# DATE_FORMAT / DATE_SUB are MariaDB-only; use the portable equivalent on Postgres
+	# and pass the 6-month cutoff as a bound parameter instead of an INTERVAL literal.
+	month_expr = (
+		"DATE_FORMAT(creation, '%%Y-%%m')"
+		if frappe.db.db_type == "mariadb"
+		else "TO_CHAR(creation, 'YYYY-MM')"
+	)
+	six_months_ago = add_months(nowdate(), -6)
+	monthly_trend = frappe.db.sql(f"""
 		SELECT
-			DATE_FORMAT(creation, '%%Y-%%m') as month,
+			{month_expr} as month,
 			COUNT(CASE WHEN doctype = 'CRM Lead' THEN 1 END) as leads,
 			COUNT(CASE WHEN doctype = 'CRM Deal' THEN 1 END) as deals
 		FROM (
@@ -447,10 +456,10 @@ def get_project_reports(project):
 			UNION ALL
 			SELECT 'CRM Deal' as doctype, creation FROM `tabCRM Deal` WHERE project = %s
 		) combined
-		WHERE creation >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+		WHERE creation >= %s
 		GROUP BY month
 		ORDER BY month DESC
-	""", (project, project), as_dict=True)
+	""", (project, project, six_months_ago), as_dict=True)
 
 	return {
 		"conversion_rate": conversion_rate,

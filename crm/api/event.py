@@ -54,8 +54,10 @@ def _process_event_notifications_by_interval(interval):
 
 	current_time = now_datetime()
 	current_user = frappe.session.user
+	# MariaDB and Postgres spell the string-aggregation function differently.
+	group_concat = "GROUP_CONCAT(email)" if frappe.db.db_type == "mariadb" else "STRING_AGG(email, ',')"
 	all_events_data = frappe.db.sql(
-		"""
+		f"""
 		SELECT
 			e.name as event_name,
 			e.subject,
@@ -75,7 +77,7 @@ def _process_event_notifications_by_interval(interval):
 		LEFT JOIN `tabEvent Notifications` en ON e.name = en.parent AND en.interval = %s
 		LEFT JOIN `tabEvent Participants` ep ON e.name = ep.parent AND ep.email = %s
 		LEFT JOIN (
-			SELECT parent, GROUP_CONCAT(email) AS participant_emails_csv
+			SELECT parent, {group_concat} AS participant_emails_csv
 			FROM `tabEvent Participants`
 			GROUP BY parent
 		) AS ep_all ON ep_all.parent = e.name
